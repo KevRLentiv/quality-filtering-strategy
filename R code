@@ -1,0 +1,225 @@
+# remove the water control
+```{r}
+# the SLE.neg.ID and SLE.sample.ID
+total_ID <- sample_names(ps.sle)
+neg.ID <- SLE$Seq_ID[SLE$Lupus == "neg"] 
+samp.ID <- SLE$Seq_ID[SLE$Lupus != "neg"]
+
+
+# from the ID and the OTU_table, get the corresponded OTU
+ps.sle.neg <- prune_samples(neg.ID, ps.sle) 
+ps.sle.samp <- prune_samples(samp.ID, ps.sle)
+
+
+
+###1. remove less than 0.005% sequence (in this study, the abundance is 4, 49 samples )
+prevdf = apply(X = otu_table(ps.sle.samp),
+               MARGIN = ifelse(taxa_are_rows(ps.sle.samp), yes = 1, no = 2),
+               FUN = function(x){sum(x > 0)})
+
+# Add taxonomy and total read counts to this data.frame
+prevdf = data.frame(Prevalence = prevdf,
+                    TotalAbundance = taxa_sums(ps.sle.samp),
+                    tax_table(ps.sle.samp))
+
+
+keepTaxa1 = rownames(prevdf)[(prevdf$TotalAbundance > 4*49)]
+sum(prevdf$TotalAbundance > 4*49)
+
+
+
+ps.sle.samp1 = prune_taxa(keepTaxa1, ps.sle.samp)
+ps.sle.neg1 = prune_taxa(keepTaxa1, ps.sle.neg)
+
+
+
+###2. remove the ASVs with prevelance less than 1/3 samples 
+##SLE
+ps.sle.samp1_SLE <- prune_samples(sample_data(ps.sle.samp1)$Lupus == "SLE",
+                                    ps.sle.samp1)
+
+prevdf.SLE = apply(X = otu_table(ps.sle.samp1_SLE),
+               MARGIN = ifelse(taxa_are_rows(ps.sle.samp1_SLE), yes = 1, no = 2),
+               FUN = function(x){sum(x > 0)})
+
+# Add taxonomy and total read counts to this data.frame
+prevdf.SLE = data.frame(Prevalence = prevdf.SLE,
+                    TotalAbundance = taxa_sums(ps.sle.samp1_SLE),
+                    tax_table(ps.sle.samp1_SLE))
+
+
+##healthy
+ps.sle.samp1_Heal <- prune_samples(sample_data(ps.sle.samp1)$Lupus == "Healthy",
+                                    ps.sle.samp1)
+
+prevdf.Heal = apply(X = otu_table(ps.sle.samp1_Heal),
+               MARGIN = ifelse(taxa_are_rows(ps.sle.samp1_Heal), yes = 1, no = 2),
+               FUN = function(x){sum(x > 0)})
+
+# Add taxonomy and total read counts to this data.frame
+prevdf.Heal = data.frame(Prevalence = prevdf.Heal,
+                    TotalAbundance = taxa_sums(ps.sle.samp1_Heal),
+                    tax_table(ps.sle.samp1_Heal))
+
+
+keepTaxa2.SLE <- rownames(prevdf.SLE)[prevdf.SLE$Prevalence > 6]
+keepTaxa2.heal <- rownames(prevdf.Heal)[prevdf.Heal$Prevalence > 10]
+keepTaxa2 <- rownames(prevdf.SLE)[(prevdf.SLE$Prevalence > 6) | (prevdf.Heal$Prevalence > 10)]
+
+sum((prevdf.SLE$Prevalence > 6) | (prevdf.Heal$Prevalence > 10))
+
+
+
+
+
+ps.sle.samp2 = prune_taxa(keepTaxa2, ps.sle.samp1)
+ps.sle.neg2 = prune_taxa(keepTaxa2, ps.sle.neg1)
+
+
+
+## 3. remove the blank control background
+#caculate the mean value of water control and sample
+negmean <- colMeans(otu_table(ps.sle.neg2))
+sampmean <- colMeans(otu_table(ps.sle.samp2))
+
+
+# define the OTU that mean(noNeg*0.05) < mean(neg)
+
+for (i in 1:100) {
+  remove.OTU <- negmean*i > sampmean
+  print(sum(remove.OTU))
+}
+
+
+remove.OTU <- negmean*3 > sampmean
+keepTaxa3 <- rownames(tax_table(ps.sle.samp2))[!remove.OTU]
+
+sum(remove.OTU)
+
+
+ps.sle.samp3 <- prune_taxa(keepTaxa3, ps.sle.samp2)
+
+
+#removed OTU, need to show which one was removed
+ps.removeOTU.samp <- prune_taxa(remove.OTU, ps.sle.samp2)
+ps.removeOTU.neg <- prune_taxa(remove.OTU, ps.sle.neg2)
+
+removeOTU.samp <- otu_table(ps.removeOTU.samp)
+removeOTU.neg <- otu_table(ps.removeOTU.neg)
+
+removeOTU <- data.frame(cbind(tax_table(ps.removeOTU.samp), t(removeOTU.samp), 
+                              t(removeOTU.neg)))
+
+write.csv(removeOTU, "Lupus removed OTU_by cutoff value 4.csv")
+
+
+
+#show the otu that left
+leave_OTU3 <- otu_table(ps.sle.samp3)
+leave_OTU3 <- cbind(tax_table(ps.sle.samp3), t(leave_OTU3))
+leave_OTU3 <- as.data.frame(leave_OTU3)
+write.csv(leave_OTU3, "The OTU left after all 3 steps filtration.csv")
+
+```
+
+
+## show how the OUT were removed step by step
+```{r}
+prevdf = apply(X = otu_table(ps.sle.samp),
+               MARGIN = ifelse(taxa_are_rows(ps.sle.samp), yes = 1, no = 2),
+               FUN = function(x){sum(x > 0)})
+
+# Add taxonomy and total read counts to this data.frame
+prevdf = data.frame(Prevalence = prevdf,
+                    TotalAbundance = taxa_sums(ps.sle.samp),
+                    tax_table(ps.sle.samp))
+
+
+remove1 <- keepTaxa[!(keepTaxa %in% keepTaxa1)]
+remove2 <- keepTaxa1[!(keepTaxa1 %in% keepTaxa2)]
+remove3 <- keepTaxa2[!(keepTaxa2 %in% keepTaxa3)]
+
+remove1 <- data.frame(ID = remove1, ASVstep = "Exclude 1")
+remove2 <- data.frame(ID = remove2, ASVstep = "Exclude 2")
+remove3 <- data.frame(ID = remove3, ASVstep = "Exclude 3")
+Accept <- data.frame(ID = keepTaxa3, ASVstep = "Accept")
+
+Remove_Accept <- rbind(remove1, remove2, remove3, Accept)
+
+
+prevdf.sub <- cbind(ID = rownames(prevdf), prevdf)
+prevdf.sub <- inner_join(Remove_Accept, prevdf.sub, by = "ID")
+
+
+## plot 
+library(scales)
+
+prevdf.sub$ASVstep <- factor(prevdf.sub$ASVstep, 
+                             levels = c("Exclude 1", "Exclude 2", "Exclude 3", "Accept"))
+
+ggplot(prevdf.sub, aes(x = Prevalence, y = TotalAbundance)) +
+  geom_point(aes(color = ASVstep), size = 1.5, alpha=0.75) +
+  scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+  theme_bw() + scale_color_manual(values=c("#ff7f00","#4daf4a","#377eb8", "#e41a1c")) +
+  theme(axis.text = element_text( color="black", 
+                           size=16))
+
+```
+
+
+
+## Compare the diversity before and after the filter
+
+```{r}
+# before removed the blank control
+ps.sle.samp.log <- transform_sample_counts(ps.sle.samp, function(x) log(1 + x))
+
+out.samp.jsd.log <- ordinate(ps.sle.samp.log, method = "MDS", distance = "jsd")
+out.samp.br.log <- ordinate(ps.sle.samp.log, method = "MDS", distance = "bray")
+out.samp.uf.log <- ordinate(ps.sle.samp.log, method = "PCoA", distance ="unifrac")
+
+P_before <- plot_ordination(ps.sle.samp.log, out.samp.br.log, color = "Lupus", 
+                            type = "samples", label = "Seq_ID", 
+                axes = 1:2) 
+P_before
+```
+
+
+```{r}
+P_before.df <- P_before$data
+theme_set(theme_bw())
+plot.before.ggplot <- ggplot(P_before.df, aes(Axis.1, Axis.2, color = Lupus)) + 
+  geom_point(size=2, alpha=0.85) +
+  theme(axis.text = element_text(size=18, color = "black")) +
+  scale_color_manual(values=c("#e41a1c", "#377eb8"))
+plot.before.ggplot
+```
+
+
+
+```{r}
+# after removed the blank control
+ps.sle.samp3.log <- transform_sample_counts(ps.sle.samp3, function(x) log(1 + x))
+
+out.samp3.jsd.log <- ordinate(ps.sle.samp3.log, method = "MDS", distance = "jsd")
+out.samp3.br.log <- ordinate(ps.sle.samp3.log, method = "MDS", distance = "bray")
+out.samp3.uf.log <- ordinate(ps.sle.samp3.log, method = "PCoA", distance ="unifrac")
+
+
+P_after <- plot_ordination(ps.sle.samp3.log, out.samp3.br.log, 
+                            color = "Lupus", 
+                            type = "samples", label = "Seq_ID",   axes = 1:2) 
+P_after
+```
+
+
+```{r}
+P_after.df <- P_after$data
+theme_set(theme_bw())
+plot.after.ggplot <- ggplot(P_after.df, aes(Axis.1, Axis.2, color = Lupus)) + 
+  geom_point(size=2, alpha=0.85) +
+  theme(axis.text = element_text(size=18, color = "black")) +
+  scale_color_manual(values=c("#e41a1c", "#377eb8"))
+plot.after.ggplot
+```
