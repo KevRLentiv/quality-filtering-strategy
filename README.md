@@ -1,1 +1,0 @@
-# quality-filtering-strategy
