@@ -175,11 +175,9 @@ ggplot(prevdf.sub, aes(x = Prevalence, y = TotalAbundance)) +
 # before removed the blank control
 ps.sle.samp.log <- transform_sample_counts(ps.sle.samp, function(x) log(1 + x))
 
-out.samp.jsd.log <- ordinate(ps.sle.samp.log, method = "MDS", distance = "jsd")
-out.samp.br.log <- ordinate(ps.sle.samp.log, method = "MDS", distance = "bray")
 out.samp.uf.log <- ordinate(ps.sle.samp.log, method = "PCoA", distance ="unifrac")
 
-P_before <- plot_ordination(ps.sle.samp.log, out.samp.br.log, color = "Lupus", 
+P_before <- plot_ordination(ps.sle.samp.log, out.samp.uf.log, color = "Lupus", 
                             type = "samples", label = "Seq_ID", 
                 axes = 1:2) 
 P_before
@@ -202,12 +200,11 @@ plot.before.ggplot
 # after removed the blank control
 ps.sle.samp3.log <- transform_sample_counts(ps.sle.samp3, function(x) log(1 + x))
 
-out.samp3.jsd.log <- ordinate(ps.sle.samp3.log, method = "MDS", distance = "jsd")
-out.samp3.br.log <- ordinate(ps.sle.samp3.log, method = "MDS", distance = "bray")
+
 out.samp3.uf.log <- ordinate(ps.sle.samp3.log, method = "PCoA", distance ="unifrac")
 
 
-P_after <- plot_ordination(ps.sle.samp3.log, out.samp3.br.log, 
+P_after <- plot_ordination(ps.sle.samp3.log, out.samp3.uf.log, 
                             color = "Lupus", 
                             type = "samples", label = "Seq_ID",   axes = 1:2) 
 P_after
