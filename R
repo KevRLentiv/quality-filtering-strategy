@@ -12,7 +12,7 @@ ps.sle.samp <- prune_samples(samp.ID, ps.sle)
 
 
 
-###1. remove less than 0.005% sequence (in this study, the abundance is 4, 49 samples )
+###1. remove less than 0.005% sequence (in this study, 49 samples, the average read is 80,000, the abundance is 4)
 prevdf = apply(X = otu_table(ps.sle.samp),
                MARGIN = ifelse(taxa_are_rows(ps.sle.samp), yes = 1, no = 2),
                FUN = function(x){sum(x > 0)})
